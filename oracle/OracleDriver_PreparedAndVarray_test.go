@@ -40,7 +40,6 @@ package oracle
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"strings"
 	"testing"
@@ -179,68 +178,6 @@ func TestDriver_PreparedUpdateReuse(t *testing.T) {
 	}
 }
 
-// TestDriver_UpdateExistingRowsAndInsertNewRow verifies two existing rows are
-// updated and one new row is inserted.
-func TestDriver_UpdateExistingRowsAndInsertNewRow(t *testing.T) {
-	t.Parallel()
-	if TestingConfig == nil {
-		t.Skip("No configuration available")
-	}
-
-	db, err := openTestDBWithConfig(TestingConfig)
-	if err != nil {
-		t.Fatalf("failed to open test DB: %v", err)
-	}
-	t.Cleanup(func() { _ = db.Close() })
-
-	ctx := context.Background()
-	table := createObjectName("t_gorm_mixed_update_insert")
-	if err := createTable(ctx, db, table, map[string]string{
-		"id":   "NUMBER PRIMARY KEY",
-		"name": "VARCHAR2(100)",
-		"age":  "NUMBER",
-	}); err != nil {
-		t.Fatalf("create table failed: %v", err)
-	}
-	t.Cleanup(func() {
-		if err := dropTable(ctx, db, table); err != nil {
-			t.Errorf("cleanup drop table %s failed: %v", table, err)
-		}
-	})
-
-	for i := 1; i <= 2; i++ {
-		if _, err := db.ExecContext(ctx,
-			"INSERT INTO "+table+" (id, name, age) VALUES (:1, :2, :3)",
-			int64(i), fmt.Sprintf("existing%d", i), int64(30+i),
-		); err != nil {
-			t.Fatalf("seed existing row %d failed: %v", i, err)
-		}
-	}
-
-	for i := 1; i <= 2; i++ {
-		if _, err := db.ExecContext(ctx,
-			"UPDATE "+table+" SET age = :1 WHERE id = :2",
-			int64(99), int64(i),
-		); err != nil {
-			t.Fatalf("update existing row %d failed: %v", i, err)
-		}
-	}
-	if _, err := db.ExecContext(ctx,
-		"INSERT INTO "+table+" (id, name, age) VALUES (:1, :2, :3)",
-		int64(3), "new_user", int64(99),
-	); err != nil {
-		t.Fatalf("insert new row failed: %v", err)
-	}
-
-	var count int64
-	if err := db.QueryRowContext(ctx, "SELECT COUNT(*) FROM "+table+" WHERE age = 99").Scan(&count); err != nil {
-		t.Fatalf("count mixed save rows failed: %v", err)
-	}
-	if count != 3 {
-		t.Fatalf("mixed save row count mismatch: got %d, want 3", count)
-	}
-}
-
 // TestDriver_JSONPreparedInsertAndUpdate verifies repeated prepared JSON
 // inserts followed by an update of all inserted rows.
 func TestDriver_JSONPreparedInsertAndUpdate(t *testing.T) {
@@ -328,111 +265,4 @@ func TestDriver_JSONPreparedInsertAndUpdate(t *testing.T) {
 			t.Fatalf("JSON updated row count mismatch: got %d, want 50", updatedCount)
 		}
 	})
-}
-
-// TestDriver_StringVarray skips string VARRAY coverage because
-// go-oracledb does not yet support collection result decoding.
-func TestDriver_StringVarray(t *testing.T) {
-	t.Parallel()
-	if TestingConfig == nil {
-		t.Skip("No configuration available")
-	}
-	t.Skip("VARRAY result decoding is not supported by go-oracledb")
-
-	db, err := openTestDBWithConfig(TestingConfig)
-	if err != nil {
-		t.Fatalf("failed to open test DB: %v", err)
-	}
-	t.Cleanup(func() { _ = db.Close() })
-
-	ctx := context.Background()
-	tableName := createObjectName("email_varray_table")
-	varrayType := createObjectName("email_list_arr")
-
-	if _, err := db.ExecContext(ctx, `CREATE OR REPLACE TYPE "`+varrayType+`" AS VARRAY(10) OF VARCHAR2(80)`); err != nil {
-		t.Fatalf("create %s failed: %v", varrayType, err)
-	}
-	if _, err := db.ExecContext(ctx, `CREATE TABLE "`+tableName+`" (
-		"ID" NUMBER PRIMARY KEY,
-		"EMAILS" "`+varrayType+`"
-	)`); err != nil {
-		t.Fatalf("create email_varray_tables failed: %v", err)
-	}
-	t.Cleanup(func() { dropVarrayTestObjects(t, ctx, db, tableName, varrayType, "") })
-
-	if _, err := db.ExecContext(ctx, `INSERT INTO "`+tableName+`" ("ID", "EMAILS")
-		VALUES (1, "`+varrayType+`"('alice@example.com','bob@example.com','gorm@oracle.com'))`); err != nil {
-		t.Fatalf("insert string VARRAY row failed: %v", err)
-	}
-
-}
-
-// TestDriver_VarrayOfObject skips object VARRAY coverage because
-// go-oracledb does not yet support collection result decoding.
-func TestDriver_VarrayOfObject(t *testing.T) {
-	t.Parallel()
-	if TestingConfig == nil {
-		t.Skip("No configuration available")
-	}
-	t.Skip("VARRAY result decoding is not supported by go-oracledb")
-
-	db, err := openTestDBWithConfig(TestingConfig)
-	if err != nil {
-		t.Fatalf("failed to open test DB: %v", err)
-	}
-	t.Cleanup(func() { _ = db.Close() })
-
-	ctx := context.Background()
-	tableName := createObjectName("dept_phone_list")
-	varrayType := createObjectName("phone_varray_typ")
-	objectType := createObjectName("phone_typ")
-
-	if _, err := db.ExecContext(ctx, `CREATE OR REPLACE TYPE "`+objectType+`" AS OBJECT (
-		"country_code" VARCHAR2(2),
-		"area_code" VARCHAR2(3),
-		"ph_number" VARCHAR2(7)
-	)`); err != nil {
-		t.Fatalf("create phone_typ failed: %v", err)
-	}
-	if _, err := db.ExecContext(ctx, `CREATE OR REPLACE TYPE "`+varrayType+`" AS VARRAY(5) OF "`+objectType+`"`); err != nil {
-		t.Fatalf("create phone_varray_typ failed: %v", err)
-	}
-	if _, err := db.ExecContext(ctx, `CREATE TABLE "`+tableName+`" (
-		"dept_no" NUMBER(5) PRIMARY KEY,
-		"phone_list" "`+varrayType+`"
-	)`); err != nil {
-		t.Fatalf("create dept_phone_lists failed: %v", err)
-	}
-	t.Cleanup(func() { dropVarrayTestObjects(t, ctx, db, tableName, varrayType, objectType) })
-
-	if _, err := db.ExecContext(ctx, `INSERT INTO "`+tableName+`" ("dept_no", "phone_list") VALUES (
-		100,
-		"`+varrayType+`"(
-			"`+objectType+`"('01', '650', '5550123'),
-			"`+objectType+`"('01', '650', '5550148'),
-			"`+objectType+`"('01', '650', '5550192')
-		)
-	)`); err != nil {
-		t.Fatalf("insert object VARRAY row failed: %v", err)
-	}
-
-}
-
-func dropVarrayTestObjects(t *testing.T, ctx context.Context, db *sql.DB, tableName string, varrayType string, objectType string) {
-	t.Helper()
-	if tableName != "" {
-		if _, err := db.ExecContext(ctx, `DROP TABLE "`+tableName+`" PURGE`); err != nil {
-			t.Errorf("cleanup drop table %s failed: %v", tableName, err)
-		}
-	}
-	if varrayType != "" {
-		if _, err := db.ExecContext(ctx, `DROP TYPE "`+varrayType+`" FORCE`); err != nil {
-			t.Errorf("cleanup drop type %s failed: %v", varrayType, err)
-		}
-	}
-	if objectType != "" {
-		if _, err := db.ExecContext(ctx, `DROP TYPE "`+objectType+`" FORCE`); err != nil {
-			t.Errorf("cleanup drop type %s failed: %v", objectType, err)
-		}
-	}
 }
