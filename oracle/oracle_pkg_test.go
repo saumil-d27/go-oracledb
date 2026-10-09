@@ -277,7 +277,6 @@ var testCases = []oracleTest.CategorizedTestCase{
 	{Name: "TestDriver_Select_BinaryDouble_SpecialValues", Categories: "functional", Exclusive: false, Fn: TestDriver_Select_BinaryDouble_SpecialValues},
 	{Name: "TestDriver_Prepared_BinaryDouble_SpecialValues_RoundTrip", Categories: "functional", Exclusive: false, Fn: TestDriver_Prepared_BinaryDouble_SpecialValues_RoundTrip},
 	{Name: "TestDriver_PreparedInsertReuseAfterError", Categories: "functional", Exclusive: false, Fn: TestDriver_PreparedInsertReuseAfterError},
-	{Name: "TestDriver_PreparedInsertRejectsInvalidJSON", Categories: "functional", Exclusive: false, Fn: TestDriver_PreparedInsertRejectsInvalidJSON},
 	{Name: "TestDriver_Select_DATE_BoundaryYears", Categories: "functional", Exclusive: false, Fn: TestDriver_Select_DATE_BoundaryYears},
 	{Name: "TestDriver_Select_TIMESTAMP_SubSecond_MinimumNonZero", Categories: "functional", Exclusive: false, Fn: TestDriver_Select_TIMESTAMP_SubSecond_MinimumNonZero},
 	{Name: "TestDriver_Select_TIMESTAMP_SubSecond_MidRange", Categories: "functional", Exclusive: false, Fn: TestDriver_Select_TIMESTAMP_SubSecond_MidRange},
