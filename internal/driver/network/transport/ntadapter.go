@@ -67,6 +67,8 @@ type NTattributes struct {
 	TCPNODelay              bool
 	SendTimeout             int
 	RecvTimeout             int
+	SendBufSize             int
+	RecvBufSize             int
 	ExpireTime              int
 	SSLServerDNMatch        bool
 	SSLAllowWeakDNMatch     bool

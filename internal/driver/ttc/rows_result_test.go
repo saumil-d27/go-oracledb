@@ -49,6 +49,7 @@ import (
 
 	"github.com/oracle/go-oracledb/v26/internal/driver/common"
 	oracleconfig "github.com/oracle/go-oracledb/v26/oracle/config"
+	"github.com/oracle/go-oracledb/v26/oracle/datatype/json"
 )
 
 // Test_defaultNumericValue verifies numeric defaults for NULL values across
@@ -268,8 +269,10 @@ func TestTTCRowsColumnsNextAndMetadata(t *testing.T) {
 	shelf := newShelf[common.MessageType]()
 	shelf.RegisterCodecFactory(NewCodecFactoryForProtocol(MinTTCProtocolVersion))
 	rows.SetShelf(shelf)
-	rows.rowData = [][]common.B1Array{{common.B1Array("abc"), common.B1Array{0xC1, 0x02}}}
-	rows.lobColContext = [][]*LobColumnContext{{nil, nil}}
+	rows.rowData = [][]columnPayload{{
+		{data: common.B1Array("abc")},
+		{data: common.B1Array{0xC1, 0x02}},
+	}}
 	rows.numOfRows = 1
 
 	if got := rows.Columns(); !reflect.DeepEqual(got, []string{"NAME", "AMOUNT"}) {
@@ -410,7 +413,7 @@ func TestTTCRowsColumnTypeScanType(t *testing.T) {
 		{name: "CLOB", dtype: DtyClob, want: reflect.TypeFor[string]()},
 		{name: "BLOB", dtype: DtyBlob, want: reflect.TypeFor[[]byte]()},
 
-		{name: "JSON", dtype: DtyJSON, want: reflect.TypeFor[string]()},
+		{name: "JSON", dtype: DtyJSON, want: reflect.TypeFor[json.JSON]()},
 	}
 
 	for _, tc := range cases {

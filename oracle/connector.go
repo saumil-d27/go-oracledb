@@ -42,7 +42,6 @@ import (
 	"context"
 	"database/sql/driver"
 	"errors"
-	"log/slog"
 	"time"
 
 	"github.com/oracle/go-oracledb/v26/internal/common"
@@ -128,9 +127,11 @@ func (c *connector) Connect(ctx context.Context) (driver.Conn, error) {
 	isNsConnected := false
 	isConnectionEstablished := false
 
+	sessionUid, _ := session.GenUUID()
+
 	localizationService := common.NewLocalizationService(c.connectorConfig.Locale.ClientLanguage)
 
-	sessionUid, _ := session.GenUUID()
+	common.OdlT(sessionUid).Log(common.BackgroundContext, common.OlFine, "Connecting to Oracle")
 
 	iterator := c.config.NewConnectionAttemptIterator(ctx)
 	if !iterator.HasNext() {
@@ -163,8 +164,8 @@ func (c *connector) Connect(ctx context.Context) (driver.Conn, error) {
 			return nil, localizationService.LocalizeError(e)
 		}
 		tctxToBeUsed = ctx
-		if common.Odl.Enabled(context.Background(), slog.LevelDebug) {
-			common.Odl.Debug("Connector.Connect",
+		if common.OdlT(sessionUid).Enabled(context.Background(), common.OlFine) {
+			common.OdlT(sessionUid).Fine("Connector.Connect",
 				"option",
 				option)
 		}
@@ -202,7 +203,7 @@ func (c *connector) Connect(ctx context.Context) (driver.Conn, error) {
 		return nil, localizationService.LocalizeError(e)
 	}
 
-	common.Odl.Debug("Network session established")
+	common.OdlT(sessionUid).Fine("Network session established")
 
 	connInstantiator, err := c.connInstantiatorFactory(c.connectorConfig, ns, c.providerRegistry)
 	if err != nil {

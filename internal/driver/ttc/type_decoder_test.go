@@ -69,7 +69,7 @@ func TestDecodeNumberColumn(t *testing.T) {
 	if err != nil {
 		t.Fatalf("EncodeDecimal returned error: %v", err)
 	}
-	decimalVal, err := DecodeNumberColumn(ColumnContext{Precision: 4, Scale: 2}, decimalWire)
+	decimalVal, err := DecodeNumberColumn(ColumnContext{Precision: 4, Scale: 2}, common.B1Array(decimalWire))
 	if err != nil {
 		t.Fatalf("DecodeNumberColumn decimal returned error: %v", err)
 	}
@@ -95,7 +95,7 @@ func TestDecodeNumberColumn(t *testing.T) {
 func TestDecodeTextColumns(t *testing.T) {
 	tests := []struct {
 		name string
-		fn   func(ColumnContext, common.B1Array) (driver.Value, error)
+		fn   func(ColumnContext, any) (driver.Value, error)
 		ctx  ColumnContext
 		data common.B1Array
 		want string
@@ -140,7 +140,7 @@ func TestDecodeFloatingPointColumns(t *testing.T) {
 	if err != nil {
 		t.Fatalf("EncodeBinaryFloat returned error: %v", err)
 	}
-	gotBinaryFloat, err := DecodeBinaryFloatColumn(ColumnContext{}, binaryFloat)
+	gotBinaryFloat, err := DecodeBinaryFloatColumn(ColumnContext{}, common.B1Array(binaryFloat))
 	if err != nil {
 		t.Fatalf("DecodeBinaryFloatColumn returned error: %v", err)
 	}
@@ -152,7 +152,7 @@ func TestDecodeFloatingPointColumns(t *testing.T) {
 	if err != nil {
 		t.Fatalf("EncodeBinaryDouble returned error: %v", err)
 	}
-	gotBinaryDouble, err := DecodeBinaryDoubleColumn(ColumnContext{}, binaryDouble)
+	gotBinaryDouble, err := DecodeBinaryDoubleColumn(ColumnContext{}, common.B1Array(binaryDouble))
 	if err != nil {
 		t.Fatalf("DecodeBinaryDoubleColumn returned error: %v", err)
 	}
@@ -255,9 +255,10 @@ func TestDecodeLobColumns(t *testing.T) {
 
 // TestDecodeJsonColumn verifies a JSON wire value is returned as its JSON
 // string.
-func TestDecodeJsonColumn(t *testing.T) {
-	if got, err := DecodeJson(ColumnContext{}, common.B1Array(`{"ok":true}`)); err != nil || got != `{"ok":true}` {
-		t.Fatalf("DecodeJson = (%v, %v), want JSON string", got, err)
+func TestDecodeJSONColumn(t *testing.T) {
+	want := []byte(`{"ok":true}`)
+	if got, err := DecodeJSON(ColumnContext{}, common.B1Array(want)); err != nil || !reflect.DeepEqual(got, want) {
+		t.Fatalf("DecodeJSON = (%v, %v), want raw JSON bytes", got, err)
 	}
 }
 
